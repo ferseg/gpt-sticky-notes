@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Sticky Note</title>
+    <style>
+        /* Sticky note styles */
+        .sticky-note {
+            display: inline-block;
+            background-color: yellow;
+            border: 1px solid black;
+            margin: 10px;
+            padding: 10px;
+        }
+
+        .sticky-note-content {
+            white-space: pre-line;
+        }
+    </style>
+    <script>
+        // Fetch and display all sticky notes on page load
+        fetch('http://localhost:3000/sticky-notes')
+            .then(response => response.json())
+            .then(notes => {
+                const container = document.getElementById('sticky-notes-container');
+                notes.forEach(note => {
+                    const noteDiv = createStickyNoteElement(note);
+                    container.appendChild(noteDiv);
+                });
+            });
+        document.addEventListener('DOMContentLoaded', () => {
+            // Submit new sticky note form
+            const form = document.getElementById('new-note-form');
+            form.addEventListener('submit', event => {
+                event.preventDefault();
+                const input = document.getElementById('new-note-input');
+                const content = input.value;
+                fetch('http://localhost:3000/sticky-notes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content })
+                })
+                    .then(response => response.json())
+                    .then(note => {
+                        const container = document.getElementById('sticky-notes-container');
+                        const noteDiv = createStickyNoteElement(note);
+                        container.appendChild(noteDiv);
+                        input.value = '';
+                    })
+                    .catch(error => console.error(error));
+            });
+        })
+
+        // Create a sticky note element
+        function createStickyNoteElement(note) {
+            const noteDiv = document.createElement('div');
+            noteDiv.className = 'sticky-note';
+            noteDiv.id = `note-${note.id}`;
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'sticky-note-content';
+            contentDiv.contentEditable = true;
+            contentDiv.textContent = note.content;
+            contentDiv.addEventListener('input', event => {
+                const newContent = event.target.textContent;
+                fetch(`http://localhost:3000/sticky-notes/${note.id}`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: newContent })
+                })
+                    .catch(error => console.error(error));
+            });
+            noteDiv.appendChild(contentDiv);
+            const deleteButton = document.createElement('button');
+            deleteButton.textContent = 'Delete';
+            deleteButton.addEventListener('click', event => {
+                fetch(`http://localhost:3000/sticky-notes/${note.id}`, {
+                    method: 'DELETE'
+                })
+                    .then(() => {
+                        noteDiv.remove();
+                    })
+                    .catch(error => console.error(error));
+            });
+            noteDiv.appendChild(deleteButton);
+            return noteDiv;
+        }
+    </script>
+</head>
+
+<body>
+    <div id="sticky-notes-container"></div>
+    <form id="new-note-form">
+        <input type="text" id="new-note-input" placeholder="Enter a new note">
+        <button type="submit">Create Note</button>
+    </form>
+</body>
+
+</html>
